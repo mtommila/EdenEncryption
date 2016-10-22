@@ -23,6 +23,7 @@ import javax.swing.JTextField;
 
 import org.apfloat.Apfloat;
 import org.apfloat.ApfloatMath;
+import org.apfloat.Apint;
 
 public class EdenEncryption implements ActionListener {
 	
@@ -108,40 +109,40 @@ public class EdenEncryption implements ActionListener {
 			textOutput.setText("");
 			boolean capable = true;
 			try {
-				if (Double.valueOf(textKey.getText()) > 0) {
+				if (new Apint(textKey.getText()).signum() > 0) {
 					blip(textKey,true);
 				}
 				else {
 					blip(textKey,false);
 					capable = false;
 				}
-			} catch (Exception ex) {
+			} catch (NumberFormatException ex) {
 				blip(textKey,false);
 				capable = false;
 			}
 
 			try {
-				if (Double.valueOf(textRoot.getText()) > 0) {
+				if (new Apint(textRoot.getText()).signum() > 0) {
 					blip(textRoot,true);
 				}
 				else {
 					blip(textRoot,false);
 					capable = false;
 				}
-			} catch (Exception ex) {
+			} catch (NumberFormatException ex) {
 				blip(textRoot,false);
 				capable = false;
 			}
 			
 			try {
-				if (Integer.valueOf(textDigits.getText()) > 0) {
+				if (Integer.valueOf(textDigits.getText()) > 0 && Integer.valueOf(textDigits.getText()) <= 8) {
 					blip(textDigits,true);
 				}
 				else {
 					blip(textDigits,false);
 					capable = false;
 				}
-			} catch (Exception ex) {
+			} catch (NumberFormatException ex) {
 				blip(textDigits,false);
 				capable = false;
 			}
@@ -161,44 +162,36 @@ public class EdenEncryption implements ActionListener {
 				if (conversionFrom.getSelectedItem() == "Binary") {
 					String[] sp = text.split(" ");
 					for (String item:sp) {
-						try {
-							int value = Integer.parseInt(item, 2);
-							in.add(value);
-						} catch (Exception exc) {}
+						int value = Integer.parseInt(item, 2);
+						in.add(value);
 					}
 				}
 				
 				if (conversionFrom.getSelectedItem() == "Denary") {
 					String[] sp = text.split(" ");
 					for (String item:sp) {
-						try {
-							int value = Integer.parseInt(item, 10);
-							in.add(value);
-						} catch (Exception exc) {}
+						int value = Integer.parseInt(item, 10);
+						in.add(value);
 					}
 				}
 				
 				if (conversionFrom.getSelectedItem() == "Hex") {
 					String[] sp = text.split(" ");
 					for (String item:sp) {
-						try {
-							int value = Integer.parseInt(item, 16);
-							in.add(value);
-						} catch (Exception exc) {}
+						int value = Integer.parseInt(item, 16);
+						in.add(value);
 					}
 				}
 				
 				if (conversionFrom.getSelectedItem() == "ASCII") {
 					for (char item: text.toCharArray()) {
-						try {
-							int value = (int) item;
-							in.add(value);
-						} catch (Exception exc) {}
+						int value = (int) item;
+						in.add(value);
 					}
 				}
 				
-				double a = Double.valueOf(textKey.getText());
-				double b = Double.valueOf(textRoot.getText());
+				Apint a = new Apint(textKey.getText());
+				Apint b = new Apint(textRoot.getText());
 				int c = Integer.valueOf(textDigits.getText());
 				List<Integer> keys = getKey(a,b,c,in.size());
 				
@@ -267,7 +260,7 @@ public class EdenEncryption implements ActionListener {
 							}
 							num = (num + 128) % 128;
 							shift = (shift + keys.get(r+1)) % 128;
-							out += (char) num;
+							out += (char) (num & 0x7F);
 						}
 					}
 					textOutput.setText(out);
@@ -280,22 +273,19 @@ public class EdenEncryption implements ActionListener {
 	}
 	
 	//Generates key
-	public List<Integer> getKey(Double key1, Double key2, int key3,int length) {
-		Apfloat s = new Apfloat(key1,(key3+1)*length+1);
-		Apfloat d = new Apfloat(key2,(key3+1)*length+1);
+	public List<Integer> getKey(Apint key1, Apint key2, int key3,int length) {
+		Apfloat s = key1.precision(key3*(length+1));
+		Apfloat d = key2.precision(key3*(length+1));
 		Apfloat sd = ApfloatMath.pow(s,Apfloat.ONE.divide(d));
 		
 		String k = sd.toString();
 		k = k.replace("0.","");
 		k = k.replace(".","");
+		k = String.format("%1$-" + key3*(length+1) + "s", k);
+		k = k.replace(" ","0");
 		List<Integer> out = new ArrayList<Integer>();
-		for (int repeat = 0; repeat < (key3+1)*length; repeat += key3) {
-			try	{
-				out.add(Integer.valueOf(k.substring(repeat, repeat+key3)));
-			}
-			catch(Exception exp){
-				return out;
-			}
+		for (int repeat = 0; repeat < key3*(length+1); repeat += key3) {
+			out.add(Integer.valueOf(k.substring(repeat, repeat+key3)));
 		}
 		return out;
 	}
